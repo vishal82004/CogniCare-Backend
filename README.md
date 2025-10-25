@@ -101,6 +101,7 @@ docker run -d --name cognicare-postgres ^
 
 - `ml_models/asd_rf_model.pkl` (already tracked, ~27 MB)
 - `ml_models/best_model_fine_tuned.h5` (download separately, place in `ml_models/`)
+  - Download link: https://drive.google.com/file/d/1F0jT7ZWOwBjc1NYa3FWvAScpZ9rDdKr0/view?usp=sharing
 
 ### 7. Run the API
 
