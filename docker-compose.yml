@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: cognicare-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: autism_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d autism_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cognicare-network
+
+  backend:
+    build: .
+    container_name: cognicare-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/autism_db
+      SECRET_KEY: ${SECRET_KEY:-your_secret_key_here_change_in_production}
+      ALGORITHM: HS256
+      DOCKER_ENV: "true"
+    volumes:
+      - ./ml_models:/app/ml_models
+      - ./videos:/app/videos
+    networks:
+      - cognicare-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  cognicare-network:
+    driver: bridge
