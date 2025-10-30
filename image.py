@@ -3,6 +3,8 @@ import os
 import numpy as np
 import asyncio
 
+_eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_eye.xml")
+
 async def detect_blur_and_save(video_path, threshold=50, max_frames=None):
     """
     Async function to detect blur and extract frames from video
@@ -14,6 +16,7 @@ async def detect_blur_and_save(video_path, threshold=50, max_frames=None):
     frame_count = 0
     saved_count = 0
     frames_list = []
+    gaze_detected = 0
 
     while True:
         ret, frame = cap.read()
@@ -28,6 +31,14 @@ async def detect_blur_and_save(video_path, threshold=50, max_frames=None):
 
         if laplacian_var >= threshold:
             saved_count += 1
+            eyes = _eye_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=4,
+                minSize=(20, 20),
+            )
+            if len(eyes) > 0:
+                gaze_detected += 1
             # filename = os.path.join(output_dir, f"frame_{frame_count}_score_{int(laplacian_var)}.jpg")
            # cv2.imwrite(filename, frame)
             
@@ -55,10 +66,10 @@ async def detect_blur_and_save(video_path, threshold=50, max_frames=None):
     cap.release()
     print(f"✅ Done! Saved {saved_count} sharp frames out of {frame_count} total frames.")
     
-    # Convert list of processed frames to a single NumPy array
+    gaze_percentage = (gaze_detected / saved_count) * 100 if saved_count else 0.0
     if frames_list:
         # The shape will be (num_frames, 224, 224, 3), which is what model.predict expects
         frames_array = np.array(frames_list)
-        return frames_array
+        return frames_array, gaze_percentage
     else:
-        return np.array([])  # Return empty array if no frames found
+        return np.array([]), 0.0  # Return empty array if no frames found

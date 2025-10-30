@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from dotenv import load_dotenv
 import models
 from database import engine
-from routers import auth, videos, forms, data
+from routers import auth, data, predictions, notifications
 
 # Load environment variables first
 load_dotenv()
@@ -15,9 +15,9 @@ models.Base.metadata.create_all(bind=engine)
 
 # Include routers
 app.include_router(auth.router)
-app.include_router(videos.router)
-app.include_router(forms.router)
 app.include_router(data.router)
+app.include_router(predictions.router)
+app.include_router(notifications.router)
 
 @app.get("/health")
 def health_check():

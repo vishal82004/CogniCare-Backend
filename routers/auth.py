@@ -51,11 +51,7 @@ def create_user(user: CreateUserRequest, db: db_dependency):
     if len(user.password.encode("utf-8")) > MAX_PASSWORD_BYTES:
         raise HTTPException(status_code=400, detail="Password must be 72 bytes or fewer")
     
-    existing_user = (
-        db.query(User)
-        .filter((User.username == user.username) | (User.email == user.email))
-        .first()
-    )
+    existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="User already exists")
 
@@ -67,7 +63,9 @@ def create_user(user: CreateUserRequest, db: db_dependency):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+
+    token = create_access_token(new_user.email, new_user.email)
+    return {"access_token": token, "token_type": "bearer"}
 
 def authenticate_user(email: str, password: str, db: Session):
     if len(password.encode("utf-8")) > MAX_PASSWORD_BYTES:
@@ -100,7 +98,7 @@ def get_users(db: db_dependency):
     return users
 
 @router.post("/token", response_model=Token)
-def get_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: db_dependency):
+async def get_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: db_dependency):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
