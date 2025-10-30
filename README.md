@@ -5,34 +5,24 @@ FastAPI-based backend for autism detection using video analysis and form-based a
 ## Features
 
 - 🔐 **JWT Authentication** — Secure user registration and login with bcrypt hashed passwords
-- 🎥 **Combined Prediction** — Upload an optional video, submit the questionnaire, and receive a unified result in one request
-- 📝 **Form Assessment** — Questionnaire-based prediction via scikit-learn Random Forest model
+- 🎥 **Combined Prediction** — Submit the questionnaire (or optional video) in a single call and receive unified results
 - 📊 **History Tracking** — Store results in PostgreSQL and fetch per-user prediction history
-- 🔔 **Live Notifications** — WebSocket pushes when a report is generated
+- 🔔 **Live Notifications** — WebSocket pushes when Groq-generated reports are ready
 - 🐳 **Dockerized** — Ready-to-run containers for backend and database
 - 🔄 **Async Processing** — Efficient frame extraction using asyncio-based pipeline
-
-## Tech Stack
-
-| Layer          | Technology                                   |
-| -------------- | --------------------------------------------- |
-| Web Framework  | FastAPI, Uvicorn                              |
-| Database       | PostgreSQL, SQLAlchemy ORM                    |
-| Auth & Security| OAuth2PasswordBearer, JWT (python-jose), bcrypt |
-| ML Models      | TensorFlow 2.x (CNN), scikit-learn RandomForest |
-| Packaging      | Docker, docker-compose                        |
 
 ## Project Structure
 
 ```
 Cognicare-Backend/
 ├── routers/
-│   ├── auth.py                # Auth endpoints (register/login/token)
-│   ├── videos.py              # Video upload & prediction
-│   ├── forms.py               # Form submission & prediction
-│   ├── data.py                # Prediction history retrieval
-│   ├── predictions.py         # TensorFlow model helper
-│   └── Mlpredict/form.py      # Random Forest utilities
+│   ├── auth.py              # Authentication endpoints
+│   ├── predictions.py       # Combined prediction endpoint
+│   ├── data.py              # Prediction history endpoint
+│   ├── notifications.py     # WebSocket endpoint for report alerts
+├── services/
+│   ├── reporting.py         # Groq-based report generation
+│   └── notifications.py     # WebSocket connection manager
 ├── ml_models/
 │   ├── best_model_fine_tuned.h5   # TensorFlow CNN (not tracked)
 │   └── asd_rf_model.pkl           # Random Forest model (27 MB)
@@ -184,13 +174,13 @@ curl -X POST http://localhost:8000/forms ^
    });
    ```
 
-3. **Request combined prediction**
+3. **Submit combined prediction**
 
    ```bash
    curl -X POST http://localhost:8000/predict/combined \
      -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-     -F "file=@/path/to/video.mp4" \
-     -F "A1=1" ... -F "Family_mem_with_ASD=no"
+     -F "A1=1" ... -F "Family_mem_with_ASD=no" \
+     -F "file=@/path/to/video.mp4"
    ```
 
    The backend stores the result, generates a Groq report, then broadcasts:
