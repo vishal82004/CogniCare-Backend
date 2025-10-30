@@ -5,9 +5,10 @@ FastAPI-based backend for autism detection using video analysis and form-based a
 ## Features
 
 - 🔐 **JWT Authentication** — Secure user registration and login with bcrypt hashed passwords
-- 🎥 **Video Prediction** — Upload videos, extract sharp frames, and classify using a TensorFlow CNN
+- 🎥 **Combined Prediction** — Upload an optional video, submit the questionnaire, and receive a unified result in one request
 - 📝 **Form Assessment** — Questionnaire-based prediction via scikit-learn Random Forest model
 - 📊 **History Tracking** — Store results in PostgreSQL and fetch per-user prediction history
+- 🔔 **Live Notifications** — WebSocket pushes when a report is generated
 - 🐳 **Dockerized** — Ready-to-run containers for backend and database
 - 🔄 **Async Processing** — Efficient frame extraction using asyncio-based pipeline
 
@@ -114,15 +115,15 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ## API Overview
 
-| Method | Endpoint            | Description                       | Auth |
-| ------ | ------------------- | --------------------------------- | ---- |
-| POST   | `/auth/`            | Register new user                 | ❌   |
-| POST   | `/auth/token`       | Obtain JWT access token           | ❌   |
-| GET    | `/auth/`            | List users (demo/admin)           | ✅   |
-| POST   | `/video`            | Upload video & get prediction     | ✅   |
-| POST   | `/forms`            | Submit questionnaire & predict    | ✅   |
-| GET    | `/data/history`     | Fetch user prediction history     | ✅   |
-| GET    | `/health`           | Service health probe              | ❌   |
+| Method | Endpoint            | Description                               | Auth |
+| ------ | ------------------- | ----------------------------------------- | ---- |
+| POST   | `/auth/`            | Register new user (returns JWT)           | ❌   |
+| POST   | `/auth/token`       | Obtain JWT access token                   | ❌   |
+| GET    | `/auth/`            | List users (demo/admin)                   | ✅   |
+| POST   | `/predict/combined` | Submit questionnaire + optional video     | ✅   |
+| GET    | `/data/history`     | Fetch user prediction history             | ✅   |
+| WS     | `/ws/notifications` | Real-time “report ready” notifications    | ✅   |
+| GET    | `/health`           | Service health probe                      | ❌   |
 
 ### Auth Flow
 
@@ -161,6 +162,56 @@ curl -X POST http://localhost:8000/forms ^
   -F "Ethnicity=White-European" -F "Jaundice=no" ^
   -F "Family_mem_with_ASD=yes"
 ```
+
+## Real-time Notifications (WebSocket)
+
+1. **Connect after login**
+
+   ```dart
+   final channel = WebSocketChannel.connect(
+     Uri.parse('ws://<backend-host>/ws/notifications?email=${Uri.encodeQueryComponent(userEmail)}'),
+   );
+   ```
+
+2. **Listen for events**
+
+   ```dart
+   channel.stream.listen((message) {
+     final data = jsonDecode(message);
+     if (data['type'] == 'report_ready') {
+       // Show toast/snackbar and refresh prediction history if needed
+     }
+   });
+   ```
+
+3. **Request combined prediction**
+
+   ```bash
+   curl -X POST http://localhost:8000/predict/combined \
+     -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+     -F "file=@/path/to/video.mp4" \
+     -F "A1=1" ... -F "Family_mem_with_ASD=no"
+   ```
+
+   The backend stores the result, generates a Groq report, then broadcasts:
+
+   ```json
+   {
+     "type": "report_ready",
+     "data_id": 12,
+     "report": "...",
+     "video_prediction": "Non_Autistic",
+     "video_confidence": 85.43,
+     "form_prediction": 0,
+     "form_confidence": 0.0975
+   }
+   ```
+
+4. **Close on logout**
+
+   ```dart
+   await channel.sink.close();
+   ```
 
 ## Contact
 
